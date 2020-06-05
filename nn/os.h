@@ -12,14 +12,14 @@ namespace nn
 {
     namespace os
     {
-        namespace detail 
+        namespace detail
         {
-            class InternalCriticalSection 
+            struct InternalCriticalSection
             {
                 u32 Image;
             };
 
-            class InternalConditionVariable 
+            struct InternalConditionVariable
             {
                 u32 Image;
             };
@@ -42,8 +42,8 @@ namespace nn
             nn::os::detail::InternalConditionVariable condvar;
         };
         typedef EventType Event;
-        
-        struct ThreadType 
+
+        struct ThreadType
         {
             u8 _0[0x40];
             u32 State;
@@ -142,7 +142,7 @@ namespace nn
         // CONDITION VARIABLE
         void InitializeConditionVariable(ConditionVariableType*);
         void FinalizeConditionVariable(ConditionVariableType*);
-        
+
         void SignalConditionVariable(ConditionVariableType*);
         void BroadcastConditionVariable(ConditionVariableType*);
         void WaitConditionVariable(ConditionVariableType*);
