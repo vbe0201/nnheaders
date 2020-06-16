@@ -25,7 +25,10 @@ namespace nn {
 
 class Result {
 public:
-  u32 raw;
+    // based on assertions
+    bool IsSuccess() const { return raw == 0; }
+
+    u32 raw;
 };
 
 }

@@ -213,11 +213,21 @@ namespace nn
         // OTHER
         void GenerateRandomBytes(void *, u64);
         nn::os::Tick GetSystemTick();
+        nn::os::Tick GetSystemTickFrequency();
         u64 GetThreadAvailableCoreMask();
         void SetMemoryHeapSize(u64 size);
 
-        namespace detail
-        {
+        // Thread-local storage
+        struct TlsSlot {
+            u32 slot;
+        };
+        Result AllocateTlsSlot(TlsSlot* slot_out, void (*)(u64));
+        void FreeTlsSlot(TlsSlot slot);
+        u64 GetTlsValue(TlsSlot slot);
+        void SetTlsValue(TlsSlot slot, u64 value);
+        u32 GetCurrentCoreNumber();
+
+        namespace detail {
             extern s32 g_CommandLineParameter;
             extern char** g_CommandLineParameterArgv;
         };
