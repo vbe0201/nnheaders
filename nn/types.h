@@ -27,6 +27,8 @@ class Result {
 public:
     // based on assertions
     bool IsSuccess() const { return raw == 0; }
+    u32 GetModule() const { return raw & 0x1FFu; }
+    u32 GetDescription() const { return (raw >> 9u) & 0x1FFFu; }
 
     u32 raw;
 };

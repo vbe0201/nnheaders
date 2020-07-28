@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include "types.h"
 #include "time.h"
 
@@ -26,7 +28,10 @@ namespace nn
         }
 
         typedef u64 Tick;
-        typedef u64 LightEventType;
+
+        struct LightEventType {
+            std::aligned_storage_t<0xc, 4> storage;
+        };
 
         // https://github.com/misson20000/nn-types/blob/master/nn_os.h
         struct EventType {
@@ -43,28 +48,35 @@ namespace nn
         };
         typedef EventType Event;
 
+        // https://github.com/misson20000/nn-types/blob/master/nn_os.h
         struct ThreadType
         {
-            u8 _0[0x40];
-            u32 State;
-            bool _44;
-            bool _45;
-            u8 _46;
-            u32 PriorityBase;
-            void* StackBase;
-            void* Stack;
-            size_t StackSize;
-            void* Arg;
-            u64 ThreadFunc;
-            u8  _88[0x100];
-            char Name[0x20];
-            detail::InternalCriticalSection Crit;
-            detail::InternalConditionVariable Condvar;
-            u32 Handle;
-            u8 padding[0x20];
-
-            ThreadType() {};
+            u64 field_8;
+            u64 field_10;
+            u64 field_18;
+            char field_20[32];
+            uint32_t thread_status;
+            char field_41;
+            u16 field_42;
+            uint32_t thread_prio_shift;
+            uint64_t thread_stack_base_addr;
+            uint64_t thread_stack_base_addr_mirror;
+            uint64_t thread_stack_size;
+            uint64_t thread_param;
+            uint64_t thread_func;
+            u64 field_70;
+            u64 field_78;
+            u64 field_80;
+            char field_88[0x100];
+            char thread_name[0x20];
+            const char *thread_name_addr;
+            nn::os::detail::InternalCriticalSection crit;
+            nn::os::detail::InternalConditionVariable condvar;
+            u32 thread_handle;
         };
+#ifdef SWITCH
+        static_assert(sizeof(ThreadType) == 0x1C0, "Wrong size");
+#endif
 
         struct MessageQueueType {
             u64 _x0;
@@ -83,6 +95,10 @@ namespace nn
 
         struct ConditionVariableType {
 
+        };
+
+        struct SemaphoreType {
+            std::aligned_storage_t<0x28, 8> storage;
         };
 
         struct SystemEvent;
@@ -124,7 +140,7 @@ namespace nn
         void FinalizeMessageQueue(nn::os::MessageQueueType *);
 
         bool TrySendMessageQueue(MessageQueueType*, u64);
-        void SendMessageQueue(MessageQueueType*, u64*);
+        void SendMessageQueue(MessageQueueType*, u64);
         bool TimedSendMessageQueue(MessageQueueType *, u64, nn::TimeSpan);
 
         bool TryReceiveMessageQueue(u64* out, MessageQueueType*);
@@ -154,15 +170,19 @@ namespace nn
         void DestroyThread(nn::os::ThreadType *);
         void StartThread(nn::os::ThreadType *);
         void SetThreadName(nn::os::ThreadType *, char const *threadName);
-        void SetThreadNamePointer(nn::os::ThreadType *, char const *);
-        char* GetThreadNamePointer(nn::os::ThreadType const *);
+        void SetThreadNamePointer(nn::os::ThreadType*, char const*);
+        char* GetThreadNamePointer(nn::os::ThreadType const*);
         nn::os::ThreadType* GetCurrentThread();
-        s32 ChangeThreadPriority(nn::os::ThreadType *thread, s32 priority);
-        s32 GetThreadPriority(nn::os::ThreadType const *thread);
+        void GetCurrentStackInfo(uintptr_t* stack_addr, size_t* stack_size);
+        s32 ChangeThreadPriority(nn::os::ThreadType* thread, s32 priority);
+        s32 GetThreadPriority(nn::os::ThreadType const* thread);
+        u64 GetThreadId(const nn::os::ThreadType* thread);
         void YieldThread();
-        void SuspendThread(nn::os::ThreadType *);
-        void ResumeThread(nn::os::ThreadType *);
+        void SuspendThread(nn::os::ThreadType*);
+        void ResumeThread(nn::os::ThreadType*);
         void SleepThread(nn::TimeSpan);
+        void WaitThread(nn::os::ThreadType*);
+        void SetThreadCoreMask(nn::os::ThreadType*, int, u64 mask);
 
         // EVENTS
         void InitializeEvent(EventType*, bool initiallySignaled, bool autoclear);
@@ -172,6 +192,23 @@ namespace nn
         bool TryWaitEvent(EventType*);
         bool TimedWaitEvent(EventType*, nn::TimeSpan);
         void ClearEvent(EventType*);
+
+        // LIGHT EVENTS
+        void InitializeLightEvent(LightEventType*, bool initiallySignaled, bool autoclear);
+        void FinalizeLightEvent(LightEventType*);
+        void SignalLightEvent(LightEventType*);
+        void WaitLightEvent(LightEventType*);
+        bool TimedWaitLightEvent(LightEventType*, nn::TimeSpan);
+        void ClearLightEvent(LightEventType*);
+
+        TimeSpan ConvertToTimeSpan(Tick ticks);
+
+        // SEMAPHORES
+        void InitializeSemaphore(SemaphoreType* semaphore, s32 initial_count, s32 max_count);
+        void FinalizeSemaphore(SemaphoreType* semaphore);
+        void AcquireSemaphore(SemaphoreType* semaphore);
+        bool TryAcquireSemaphore(SemaphoreType* semaphore);
+        void ReleaseSemaphore(SemaphoreType* semaphore);
 
         // EXCEPTION HANDLING
         typedef union {
