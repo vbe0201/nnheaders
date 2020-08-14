@@ -33,4 +33,4 @@ public:
     u32 raw;
 };
 
-}
+}  // namespace nn
