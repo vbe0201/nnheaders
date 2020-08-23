@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <vapours/results.hpp>
 
 using u8 = std::uint8_t;
 using u16 = std::uint16_t;
@@ -23,14 +24,9 @@ using ulong = u64;
 
 namespace nn {
 
-class Result {
-public:
-    // based on assertions
-    bool IsSuccess() const { return raw == 0; }
-    u32 GetModule() const { return raw & 0x1FFu; }
-    u32 GetDescription() const { return (raw >> 9u) & 0x1FFFu; }
-
-    u32 raw;
+struct Result : ams::Result
+{
+    using ams::Result::Result;
 };
 
 }  // namespace nn
