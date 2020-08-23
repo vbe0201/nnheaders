@@ -33,20 +33,22 @@ struct DirectoryHandle {
 enum DirectoryEntryType { DirectoryEntryType_Directory, DirectoryEntryType_File };
 
 enum OpenMode {
-    OpenMode_Read = BIT(0),
-    OpenMode_Write = BIT(1),
-    OpenMode_Append = BIT(2),
+    OpenMode_Read = 1 << 0,
+    OpenMode_Write = 1 << 1,
+    OpenMode_Append = 1 << 2,
 
     OpenMode_ReadWrite = OpenMode_Read | OpenMode_Write
 };
 
 enum OpenDirectoryMode {
-    OpenDirectoryMode_Directory = BIT(0),
-    OpenDirectoryMode_File = BIT(1),
-    OpenDirectoryMode_All = OpenDirectoryMode_Directory | OpenDirectoryMode_File
+    OpenDirectoryMode_Directory = 1 << 0,
+    OpenDirectoryMode_File = 1 << 1,
+    OpenDirectoryMode_All = OpenDirectoryMode_Directory | OpenDirectoryMode_File,
 };
 
-enum WriteOptionFlag { WriteOptionFlag_Flush = BIT(0) };
+enum WriteOptionFlag {
+    WriteOptionFlag_Flush = 1 << 0,
+};
 
 struct WriteOption {
     int flags;
