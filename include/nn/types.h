@@ -27,6 +27,7 @@ namespace nn {
 struct Result : ams::Result
 {
     using ams::Result::Result;
+    using ams::Result::operator=;
 };
 
 }  // namespace nn
