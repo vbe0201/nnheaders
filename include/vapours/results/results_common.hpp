@@ -73,6 +73,10 @@ namespace ams {
                 static constexpr ALWAYS_INLINE BaseType GetDescriptionFromValue(BaseType value) {
                     return ((value >> ModuleBits) & ~(~BaseType() << DescriptionBits));
                 }
+
+                static constexpr ALWAYS_INLINE BaseType MaskValue(BaseType value) {
+                    return value & ((1 << (ModuleBits + DescriptionBits)) - 1);
+                }
         };
 
         /* Use CRTP for Results. */
@@ -84,6 +88,7 @@ namespace ams {
             public:
                 constexpr ALWAYS_INLINE BaseType GetModule() const { return ResultTraits::GetModuleFromValue(static_cast<const Self *>(this)->GetValue()); }
                 constexpr ALWAYS_INLINE BaseType GetDescription() const { return ResultTraits::GetDescriptionFromValue(static_cast<const Self *>(this)->GetValue()); }
+                constexpr ALWAYS_INLINE BaseType GetMaskedValue() const { return ResultTraits::MaskValue(static_cast<const Self *>(this)->GetValue()); }
         };
 
         class ResultConstructor;
@@ -196,7 +201,7 @@ namespace ams {
                 static constexpr typename ResultTraits::BaseType EndValue = ResultTraits::MakeStaticValue<Module, DescriptionEnd>::value;
             public:
                 NX_CONSTEXPR bool Includes(Result result) {
-                    return StartValue <= result.GetValue() && result.GetValue() <= EndValue;
+                    return StartValue <= result.GetMaskedValue() && result.GetMaskedValue() <= EndValue;
                 }
         };
 
