@@ -12,6 +12,8 @@ namespace nn {
 typedef u64 ApplicationId;
 
 namespace fs {
+using namespace ams::fs;
+
 typedef u64 UserId;
 
 struct DirectoryEntry {
