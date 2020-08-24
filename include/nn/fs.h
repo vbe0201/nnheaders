@@ -73,7 +73,7 @@ struct WriteOption {
 Result QueryMountRomCacheSize(u64* size);
 Result QueryMountRomCacheSize(u64* size, nn::ApplicationId);
 Result MountRom(char const* name, void* buffer, u64 bufferSize);
-Result CanMountRomForDebug();
+bool CanMountRomForDebug();
 Result CanMountRom(nn::ApplicationId);
 Result QueryMountRomOnFileCacheSize(u64*, nn::fs::FileHandle);
 Result MountRomOnFile(char const*, nn::fs::FileHandle, void*, u64);
@@ -81,6 +81,7 @@ Result MountRomOnFile(char const*, nn::fs::FileHandle, void*, u64);
 // SAVE
 Result EnsureSaveData(nn::account::Uid const&);
 Result MountSaveData(char const*, nn::fs::UserId);
+Result MountSaveDataForDebug(char const*);
 Result CommitSaveData(const char* path);
 
 // FILE
@@ -114,5 +115,9 @@ bool IsSdCardInserted();
 Result FormatSdCard();
 Result FormatSdCardDryRun();
 bool IsExFatSupported();
+
+Result MountHost(char const* mount, char const* path);
+Result MountHostRoot();
+Result UnmountHostRoot();
 };  // namespace fs
 };  // namespace nn
