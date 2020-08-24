@@ -48,6 +48,13 @@ enum OpenDirectoryMode {
     OpenDirectoryMode_All = OpenDirectoryMode_Directory | OpenDirectoryMode_File,
 };
 
+struct ReadOption {
+    u32 value;
+
+    static const ReadOption None;
+};
+inline constexpr const ReadOption ReadOption::None = {0};
+
 enum WriteOptionFlag {
     WriteOptionFlag_Flush = 1 << 0,
 };
@@ -84,7 +91,7 @@ void CloseFile(FileHandle fileHandle);
 Result FlushFile(FileHandle fileHandle);
 Result DeleteFile(char const* filepath);
 Result ReadFile(u64* outSize, nn::fs::FileHandle handle, s64 offset, void* buffer, u64 bufferSize,
-                s32 const&);
+                const ReadOption& option);
 Result ReadFile(u64* outSize, nn::fs::FileHandle handle, s64 offset, void* buffer, u64 bufferSize);
 Result ReadFile(nn::fs::FileHandle handle, s64 offset, void* buffer, u64 bufferSize);
 Result WriteFile(FileHandle handle, s64 fileOffset, void const* buff, u64 size,
