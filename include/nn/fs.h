@@ -119,5 +119,7 @@ bool IsExFatSupported();
 Result MountHost(char const* mount, char const* path);
 Result MountHostRoot();
 Result UnmountHostRoot();
+
+Result Unmount(char const* mount);
 };  // namespace fs
 };  // namespace nn
