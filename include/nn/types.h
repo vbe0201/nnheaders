@@ -30,4 +30,6 @@ struct Result : ams::Result
     using ams::Result::operator=;
 };
 
+using ams::ResultSuccess;
+
 }  // namespace nn
