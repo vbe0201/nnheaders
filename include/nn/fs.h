@@ -81,6 +81,7 @@ Result MountRomOnFile(char const*, nn::fs::FileHandle, void*, u64);
 // SAVE
 Result EnsureSaveData(nn::account::Uid const&);
 Result MountSaveData(char const*, nn::fs::UserId);
+Result CommitSaveData(const char* path);
 
 // FILE
 Result GetEntryType(nn::fs::DirectoryEntryType* type, char const* path);
