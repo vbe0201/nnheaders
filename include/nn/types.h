@@ -21,15 +21,3 @@ using f64 = double;
 using char16 = char16_t;
 using size_t = std::size_t;
 using ulong = u64;
-
-namespace nn {
-
-struct Result : ams::Result
-{
-    using ams::Result::Result;
-    using ams::Result::operator=;
-};
-
-using ams::ResultSuccess;
-
-}  // namespace nn

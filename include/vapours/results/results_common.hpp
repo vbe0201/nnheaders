@@ -1,77 +1,41 @@
-/*
- * Copyright (c) 2018-2020 Atmosphère-NX
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 #pragma once
-#include <climits>
-#include <cstddef>
 #include <cstdint>
+#include <climits>
 #include <type_traits>
 
-using u8 = std::uint8_t;
-using u16 = std::uint16_t;
-using u32 = std::uint32_t;
-using u64 = std::uint64_t;
-using u128 = __uint128_t;
+namespace nn {
 
-using s8 = std::int8_t;
-using s16 = std::int16_t;
-using s32 = std::int32_t;
-using s64 = std::int64_t;
-
-using f32 = float;
-using f64 = double;
-
-using char16 = char16_t;
-using size_t = std::size_t;
-using ulong = u64;
-
-#define ALWAYS_INLINE __attribute__((always_inline))
-#define NORETURN __attribute__((noreturn))
-#define NOINLINE __attribute__((noinline))
-#define NX_CONSTEXPR constexpr
-
-namespace ams {
-
-    namespace result::impl {
+    namespace result::detail {
 
         class ResultTraits {
             public:
-                using BaseType = u32;
-                static constexpr BaseType SuccessValue = BaseType();
-                static constexpr BaseType ModuleBits = 9;
-                static constexpr BaseType DescriptionBits = 13;
-                static constexpr BaseType ReservedBits = 10;
+                using BaseType = std::uint32_t;
+                static const BaseType SuccessValue = BaseType();
+                static const int ModuleBits = 9;
+                static const int DescriptionBits = 13;
+                static const int ReservedBits = 10;
                 static_assert(ModuleBits + DescriptionBits + ReservedBits == sizeof(BaseType) * CHAR_BIT, "ModuleBits + DescriptionBits + ReservedBits == sizeof(BaseType) * CHAR_BIT");
-            public:
-                static constexpr ALWAYS_INLINE BaseType MakeValue(BaseType module, BaseType description) {
-                    return (module) | (description << ModuleBits);
+            private:
+                static BaseType GetBitsValue(BaseType v, int ofs, int num) noexcept {
+                    return (v >> ofs) & ~(~BaseType() << num);
                 }
-
-                template<BaseType module, BaseType description>
-                struct MakeStaticValue : public std::integral_constant<BaseType, MakeValue(module, description)> {
-                    static_assert(module < (1 << ModuleBits), "Invalid Module");
-                    static_assert(description < (1 << DescriptionBits), "Invalid Description");
+            public:
+                template<int M, int D>
+                struct MakeInnerValueStatic : public std::integral_constant<BaseType, (M) | (D << ModuleBits)> {
+                    static_assert(M < (1 << ModuleBits), "Invalid Module");
+                    static_assert(D < (1 << DescriptionBits), "Invalid Description");
                 };
 
-                static constexpr ALWAYS_INLINE BaseType GetModuleFromValue(BaseType value) {
-                    return value & ~(~BaseType() << ModuleBits);
+                static BaseType MakeInnerValue(int m, int d) noexcept {
+                    return (static_cast<BaseType>(m) << 0) | (static_cast<BaseType>(d) << ModuleBits);
                 }
 
-                static constexpr ALWAYS_INLINE BaseType GetDescriptionFromValue(BaseType value) {
-                    return ((value >> ModuleBits) & ~(~BaseType() << DescriptionBits));
+                static BaseType GetModuleFromValue(BaseType value) noexcept {
+                    return GetBitsValue(value, 0, ModuleBits);
+                }
+
+                static BaseType GetDescriptionFromValue(BaseType value) noexcept {
+                    return GetBitsValue(value, ModuleBits, DescriptionBits);
                 }
         };
 
@@ -80,123 +44,127 @@ namespace ams {
         class ResultBase {
             public:
                 using BaseType = typename ResultTraits::BaseType;
-                static constexpr BaseType SuccessValue = ResultTraits::SuccessValue;
-            public:
-                constexpr ALWAYS_INLINE BaseType GetModule() const { return ResultTraits::GetModuleFromValue(static_cast<const Self *>(this)->GetValue()); }
-                constexpr ALWAYS_INLINE BaseType GetDescription() const { return ResultTraits::GetDescriptionFromValue(static_cast<const Self *>(this)->GetValue()); }
+                static const BaseType SuccessValue = ResultTraits::SuccessValue;
+
+                int GetModule() const noexcept {
+                    return static_cast<int>(ResultTraits::GetModuleFromValue(static_cast<const Self &>(*this).GetInnerValueForDebug()));
+                }
+
+                int GetDescription() const noexcept {
+                    return static_cast<int>(ResultTraits::GetDescriptionFromValue(static_cast<const Self &>(*this).GetInnerValueForDebug()));
+                }
         };
 
-        class ResultConstructor;
+        class ResultInternalAccessor;
 
     }
 
     class ResultSuccess;
 
-    class Result : public result::impl::ResultBase<Result> {
-        friend class ResultConstructor;
-        public:
-            using Base = typename result::impl::ResultBase<Result>;
+    class Result : public result::detail::ResultBase<Result> {
+        friend class result::detail::ResultInternalAccessor;
         private:
-            typename Base::BaseType value;
+            using Base = typename result::detail::ResultBase<Result>;
         private:
-            /* TODO: Maybe one-day, the result constructor. */
+            BaseType m_value;
+        private:
+            explicit Result(BaseType v) noexcept : m_value(v) { /* ... */ }
         public:
-            Result() { /* ... */ }
+            Result() noexcept { /* ... */ }
 
-            /* TODO: It sure would be nice to make this private. */
-            constexpr Result(typename Base::BaseType v) : value(v) {}
+            BaseType GetInnerValueForDebug() const noexcept { return m_value; }
 
-            constexpr ALWAYS_INLINE operator ResultSuccess() const;
-            NX_CONSTEXPR bool CanAccept(Result) { return true; }
+            bool IsSuccess() const noexcept { return m_value == SuccessValue; }
+            bool IsFailure() const noexcept { return !IsSuccess(); }
 
-            constexpr ALWAYS_INLINE bool IsSuccess() const { return this->GetValue() == Base::SuccessValue; }
-            constexpr ALWAYS_INLINE bool IsFailure() const { return !this->IsSuccess(); }
-            constexpr ALWAYS_INLINE typename Base::BaseType GetModule() const { return Base::GetModule(); }
-            constexpr ALWAYS_INLINE typename Base::BaseType GetDescription() const { return Base::GetDescription(); }
+            operator ResultSuccess() const noexcept;
+            static bool CanAccept(Result result) noexcept;
 
-            constexpr ALWAYS_INLINE typename Base::BaseType GetValue() const { return this->value; }
+            int GetModule() const noexcept { return Base::GetModule(); }
+            int GetDescription() const noexcept { return Base::GetDescription(); }
     };
-    static_assert(sizeof(Result) == sizeof(Result::Base::BaseType), "sizeof(Result) == sizeof(Result::Base::BaseType)");
+    static_assert(sizeof(Result) == sizeof(result::detail::ResultTraits::BaseType), "sizeof(Result) == sizeof(detail::ResultTraits::BaseType)");
     static_assert(std::is_trivially_destructible<Result>::value, "std::is_trivially_destructible<Result>::value");
 
-    namespace result::impl {
+    inline bool Result::CanAccept(Result result) noexcept {
+        (void)(result);
+        return true;
+    }
 
-        class ResultConstructor {
+    namespace result::detail {
+
+        class ResultInternalAccessor {
             public:
-                static constexpr ALWAYS_INLINE Result MakeResult(ResultTraits::BaseType value) {
-                    return Result(value);
-                }
+                static Result ConstructResult(ResultTraits::BaseType v) noexcept { return Result(v); }
         };
 
-        constexpr ALWAYS_INLINE Result MakeResult(ResultTraits::BaseType value) {
-            return ResultConstructor::MakeResult(value);
-        }
+        inline Result ConstructResult(ResultTraits::BaseType v) noexcept { return ResultInternalAccessor::ConstructResult(v); }
 
     }
 
-    class ResultSuccess final : public result::impl::ResultBase<ResultSuccess> {
+    class ResultSuccess : public result::detail::ResultBase<ResultSuccess> {
         public:
-            using Base = typename result::impl::ResultBase<ResultSuccess>;
+            using Base = typename result::detail::ResultBase<ResultSuccess>;
         public:
-            constexpr operator Result() const { return result::impl::MakeResult(Base::SuccessValue); }
-            static NX_CONSTEXPR bool CanAccept(Result result) { return result.IsSuccess(); }
+            operator Result() const noexcept { return result::detail::ConstructResult(SuccessValue); }
 
-            constexpr ALWAYS_INLINE bool IsSuccess() const { return true; }
-            constexpr ALWAYS_INLINE bool IsFailure() const { return !this->IsSuccess(); }
-            constexpr ALWAYS_INLINE typename Base::BaseType GetModule() const { return Base::GetModule(); }
-            constexpr ALWAYS_INLINE typename Base::BaseType GetDescription() const { return Base::GetDescription(); }
+            BaseType GetInnerValueForDebug() const noexcept { return SuccessValue; }
 
-            constexpr ALWAYS_INLINE typename Base::BaseType GetValue() const { return Base::SuccessValue; }
+            bool IsSuccess() const noexcept { return true; }
+
+            static bool CanAccept(Result result) noexcept { return result.IsSuccess(); }
+
+            int GetModule() const noexcept { return Base::GetModule(); }
+            int GetDescription() const noexcept { return Base::GetDescription(); }
     };
 
-    namespace result::impl {
+    namespace result::detail {
 
-        NORETURN NOINLINE void OnResultAssertion(const char *file, int line, const char *func, const char *expr, Result result);
-        NORETURN NOINLINE void OnResultAssertion(Result result);
-        NORETURN NOINLINE void OnResultAbort(const char *file, int line, const char *func, const char *expr, Result result);
-        NORETURN NOINLINE void OnResultAbort(Result result);
+        __attribute__((noreturn)) void OnUnhandledResult(Result result) noexcept;
 
     }
 
-    constexpr ALWAYS_INLINE Result::operator ResultSuccess() const {
+    inline Result::operator ResultSuccess() const noexcept {
         if (!ResultSuccess::CanAccept(*this)) {
-            result::impl::OnResultAbort(*this);
+            result::detail::OnUnhandledResult(*this);
         }
         return ResultSuccess();
     }
 
-    namespace result::impl {
+    namespace result::detail {
 
-        template<ResultTraits::BaseType _Module, ResultTraits::BaseType _Description>
-        class ResultErrorBase : public ResultBase<ResultErrorBase<_Module, _Description>> {
+        template<int _Module, int _Description>
+        class ErrorResultBase : public ResultBase<ErrorResultBase<_Module, _Description>> {
+            private:
+                using Base = ResultBase<ErrorResultBase<_Module, _Description>>;
             public:
-                using Base = typename result::impl::ResultBase<ResultErrorBase<_Module, _Description>>;
-                static constexpr typename Base::BaseType Module = _Module;
-                static constexpr typename Base::BaseType Description = _Description;
-                static constexpr typename Base::BaseType Value = ResultTraits::MakeStaticValue<Module, Description>::value;
-                static_assert(Value != Base::SuccessValue, "Value != Base::SuccessValue");
+                static constexpr int Module = _Module;
+                static constexpr int Description = _Description;
+                static constexpr typename Base::BaseType InnerValue = ResultTraits::MakeInnerValueStatic<Module, Description>::value;
+                static_assert(InnerValue != Base::SuccessValue, "InnerValue != Base::SuccessValue");
             public:
-                constexpr operator Result() const { return MakeResult(Value); }
-                constexpr operator ResultSuccess() const { OnResultAbort(Value); return {}; }
+                operator Result() const noexcept { return ConstructResult(InnerValue); }
+                operator ResultSuccess() const noexcept { OnUnhandledResult(*this); }
 
-                constexpr ALWAYS_INLINE bool IsSuccess() const { return false; }
-                constexpr ALWAYS_INLINE bool IsFailure() const { return !this->IsSuccess(); }
+                bool IsSuccess() const noexcept { return false; }
 
-                constexpr ALWAYS_INLINE typename Base::BaseType GetValue() const { return Value; }
+                typename Base::BaseType GetInnerValueForDebug() const noexcept { return InnerValue; }
         };
 
-        template<ResultTraits::BaseType _Module, ResultTraits::BaseType DescStart, ResultTraits::BaseType DescEnd>
-        class ResultErrorRangeBase {
+        template<int _Module, int DescStart, int DescEnd>
+        class ErrorRange {
             public:
-                static constexpr ResultTraits::BaseType Module = _Module;
-                static constexpr ResultTraits::BaseType DescriptionStart = DescStart;
-                static constexpr ResultTraits::BaseType DescriptionEnd = DescEnd;
-                static_assert(DescriptionStart <= DescriptionEnd, "DescriptionStart <= DescriptionEnd");
-                static constexpr typename ResultTraits::BaseType StartValue = ResultTraits::MakeStaticValue<Module, DescriptionStart>::value;
-                static constexpr typename ResultTraits::BaseType EndValue = ResultTraits::MakeStaticValue<Module, DescriptionEnd>::value;
+                static const int Module = _Module;
+                static const int DescriptionStart = DescStart;
+                static const int DescriptionEnd = DescEnd;
+                static_assert(DescriptionStart < DescriptionEnd, "DescriptionStart < DescriptionEnd");
             public:
-                NX_CONSTEXPR bool Includes(Result result) {
-                    return Module == result.GetModule() && DescriptionStart <= result.GetDescription() && result.GetDescription() <= DescriptionEnd;
+                static bool Includes(Result result) noexcept {
+                    return result.GetModule() == Module && DescriptionStart <= result.GetDescription() && result.GetDescription() < DescriptionEnd;
+                }
+
+                friend bool operator <=(Result result, ErrorRange) noexcept {
+                    return Includes(result);
                 }
         };
 
@@ -205,136 +173,24 @@ namespace ams {
 }
 
 /* Macros for defining new results. */
-#define R_DEFINE_NAMESPACE_RESULT_MODULE(value) namespace impl::result { static constexpr inline ::ams::result::impl::ResultTraits::BaseType ResultModuleId = value; }
-#define R_CURRENT_NAMESPACE_RESULT_MODULE impl::result::ResultModuleId
+#define R_DEFINE_NAMESPACE_RESULT_MODULE(value) namespace detail::result { using ResultModuleId = std::integral_constant<int, value>; }
+#define R_CURRENT_NAMESPACE_RESULT_MODULE detail::result::ResultModuleId::value
 #define R_NAMESPACE_MODULE_ID(nmspc) nmspc::R_CURRENT_NAMESPACE_RESULT_MODULE
 
-#define R_MAKE_NAMESPACE_RESULT(nmspc, desc) static_cast<::ams::Result>(::ams::result::impl::ResultTraits::MakeValue(R_NAMESPACE_MODULE_ID(nmspc), desc))
-
-#define R_DEFINE_ERROR_RESULT_IMPL(name, desc_start, desc_end) \
-    class Result##name final : public ::ams::result::impl::ResultErrorBase<R_CURRENT_NAMESPACE_RESULT_MODULE, desc_start>, public ::ams::result::impl::ResultErrorRangeBase<R_CURRENT_NAMESPACE_RESULT_MODULE, desc_start, desc_end> {}
+#define R_DEFINE_ERROR_RESULT_IMPL(name, desc_start, desc_end)                                               \
+    class Result##name :                                                                                     \
+        public ::nn::result::detail::ErrorResultBase<R_CURRENT_NAMESPACE_RESULT_MODULE, desc_start>,         \
+        public ::nn::result::detail::ErrorRange<R_CURRENT_NAMESPACE_RESULT_MODULE, desc_start, desc_end + 1> \
+        {}
 
 #define R_DEFINE_ABSTRACT_ERROR_RESULT_IMPL(name, desc_start, desc_end) \
-    class Result##name final : public ::ams::result::impl::ResultErrorRangeBase<R_CURRENT_NAMESPACE_RESULT_MODULE, desc_start, desc_end> {}
+    class Result##name :                                                                                     \
+        public ::nn::result::detail::ErrorRange<R_CURRENT_NAMESPACE_RESULT_MODULE, desc_start, desc_end + 1> \
+        {}
 
 
-#define R_DEFINE_ERROR_RESULT(name, desc) R_DEFINE_ERROR_RESULT_IMPL(name, desc, desc)
+#define R_DEFINE_ERROR_RESULT(name, desc)      R_DEFINE_ERROR_RESULT_IMPL(name, desc, desc)
 #define R_DEFINE_ERROR_RANGE(name, start, end) R_DEFINE_ERROR_RESULT_IMPL(name, start, end)
 
-#define R_DEFINE_ABSTRACT_ERROR_RESULT(name, desc) R_DEFINE_ABSTRACT_ERROR_RESULT_IMPL(name, desc, desc)
+#define R_DEFINE_ABSTRACT_ERROR_RESULT(name, desc)      R_DEFINE_ABSTRACT_ERROR_RESULT_IMPL(name, desc, desc)
 #define R_DEFINE_ABSTRACT_ERROR_RANGE(name, start, end) R_DEFINE_ABSTRACT_ERROR_RESULT_IMPL(name, start, end)
-
-#define R_SUCCEEDED(res) (static_cast<::ams::Result>(res).IsSuccess())
-#define R_FAILED(res)    (static_cast<::ams::Result>(res).IsFailure())
-
-
-/// Evaluates an expression that returns a result, and returns the result if it would fail.
-#define R_TRY(res_expr) \
-    ({ \
-        const auto _tmp_r_try_rc = (res_expr); \
-        if (R_FAILED(_tmp_r_try_rc)) { \
-            return _tmp_r_try_rc; \
-        } \
-    })
-
-#ifdef AMS_ENABLE_DEBUG_PRINT
-#define AMS_CALL_ON_RESULT_ASSERTION_IMPL(cond, val) ::ams::result::impl::OnResultAssertion(__FILE__, __LINE__, __PRETTY_FUNCTION__, cond, val)
-#define AMS_CALL_ON_RESULT_ABORT_IMPL(cond, val)  ::ams::result::impl::OnResultAbort(__FILE__, __LINE__, __PRETTY_FUNCTION__, cond, val)
-#else
-#define AMS_CALL_ON_RESULT_ASSERTION_IMPL(cond, val) ::ams::result::impl::OnResultAssertion("", 0, "", "", val)
-#define AMS_CALL_ON_RESULT_ABORT_IMPL(cond, val)  ::ams::result::impl::OnResultAbort("", 0, "", "", val)
-#endif
-
-/// Evaluates an expression that returns a result, and asserts the result if it would fail.
-#ifdef AMS_ENABLE_ASSERTIONS
-#define R_ASSERT(res_expr) \
-    ({ \
-        const auto _tmp_r_assert_rc = (res_expr); \
-        if (AMS_UNLIKELY(R_FAILED(_tmp_r_assert_rc))) {  \
-            AMS_CALL_ON_RESULT_ASSERTION_IMPL(#res_expr, _tmp_r_assert_rc); \
-        } \
-    })
-#else
-#define R_ASSERT(res_expr) AMS_UNUSED((res_expr));
-#endif
-
-/// Evaluates an expression that returns a result, and aborts if the result would fail.
-#define R_ABORT_UNLESS(res_expr) \
-    ({ \
-        const auto _tmp_r_abort_rc = (res_expr); \
-        if (AMS_UNLIKELY(R_FAILED(_tmp_r_abort_rc))) {  \
-            AMS_CALL_ON_RESULT_ABORT_IMPL(#res_expr, _tmp_r_abort_rc); \
-        } \
-    })
-
-/// Evaluates a boolean expression, and returns a result unless that expression is true.
-#define R_UNLESS(expr, res) \
-    ({ \
-        if (!(expr)) { \
-            return static_cast<::ams::Result>(res); \
-        } \
-    })
-
-/// Evaluates a boolean expression, and succeeds if that expression is true.
-#define R_SUCCEED_IF(expr) R_UNLESS(!(expr), ResultSuccess())
-
-/// Helpers for pattern-matching on a result expression, if the result would fail.
-#define R_CURRENT_RESULT _tmp_r_current_result
-
-#define R_TRY_CATCH(res_expr) \
-    ({ \
-        const auto R_CURRENT_RESULT = (res_expr); \
-        if (R_FAILED(R_CURRENT_RESULT)) { \
-            if (false)
-
-namespace ams::result::impl {
-
-    template<typename... Rs>
-    constexpr ALWAYS_INLINE bool AnyIncludes(Result result) {
-        return (Rs::Includes(result) || ...);
-    }
-
-}
-
-#define R_CATCH(...) \
-            } else if (::ams::result::impl::AnyIncludes<__VA_ARGS__>(R_CURRENT_RESULT)) { \
-                if (true)
-
-#define R_CATCH_MODULE(__module__) \
-            } else if ((R_CURRENT_RESULT).GetModule() == ::ams::R_NAMESPACE_MODULE_ID(__module__)) { \
-                if (true)
-
-#define R_CONVERT(catch_type, convert_type) \
-        R_CATCH(catch_type) { return static_cast<::ams::Result>(convert_type); }
-
-#define R_CATCH_ALL() \
-            } else if (R_FAILED(R_CURRENT_RESULT)) { \
-                if (true)
-
-#define R_CONVERT_ALL(convert_type) \
-        R_CATCH_ALL() { return static_cast<::ams::Result>(convert_type); }
-
-#define R_CATCH_RETHROW(catch_type) \
-        R_CONVERT(catch_type, R_CURRENT_RESULT)
-
-#define R_END_TRY_CATCH \
-            else if (R_FAILED(R_CURRENT_RESULT)) { \
-                return R_CURRENT_RESULT; \
-            } \
-        } \
-    })
-
-#define R_END_TRY_CATCH_WITH_ASSERT \
-            else { \
-                R_ASSERT(R_CURRENT_RESULT); \
-            } \
-        } \
-    })
-
-
-#define R_END_TRY_CATCH_WITH_ABORT_UNLESS \
-            else { \
-                R_ABORT_UNLESS(R_CURRENT_RESULT); \
-            } \
-        } \
-    })
