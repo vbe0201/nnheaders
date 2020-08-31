@@ -133,13 +133,13 @@ namespace nn {
 
     namespace result::detail {
 
-        template<int _Module, int _Description>
-        class ErrorResultBase : public ResultBase<ErrorResultBase<_Module, _Description>> {
+        template<int Module_, int Description_>
+        class ErrorResultBase : public ResultBase<ErrorResultBase<Module_, Description_>> {
             private:
-                using Base = ResultBase<ErrorResultBase<_Module, _Description>>;
+                using Base = ResultBase<ErrorResultBase<Module_, Description_>>;
             public:
-                static constexpr int Module = _Module;
-                static constexpr int Description = _Description;
+                static constexpr int Module = Module_;
+                static constexpr int Description = Description_;
                 static constexpr typename Base::BaseType InnerValue = ResultTraits::MakeInnerValueStatic<Module, Description>::value;
                 static_assert(InnerValue != Base::SuccessValue, "InnerValue != Base::SuccessValue");
             public:
@@ -151,10 +151,10 @@ namespace nn {
                 typename Base::BaseType GetInnerValueForDebug() const noexcept { return InnerValue; }
         };
 
-        template<int _Module, int DescStart, int DescEnd>
+        template<int Module_, int DescStart, int DescEnd>
         class ErrorRange {
             public:
-                static const int Module = _Module;
+                static const int Module = Module_;
                 static const int DescriptionStart = DescStart;
                 static const int DescriptionEnd = DescEnd;
                 static_assert(DescriptionStart < DescriptionEnd, "DescriptionStart < DescriptionEnd");
