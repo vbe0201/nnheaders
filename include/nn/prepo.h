@@ -26,7 +26,7 @@ public:
     PlayReport();
     explicit PlayReport(const char* event_id);
 
-    void SetEventId(const char* event_id);
+    Result SetEventId(const char* event_id);
     void SetBuffer(void* buffer, size_t size);
     void Clear();
 
