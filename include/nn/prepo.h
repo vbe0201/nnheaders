@@ -39,6 +39,8 @@ public:
 
     s32 GetCount() const;
 
+    static u32 CalcBufferSize(s32 num_entries) { return size_t(0x82) * num_entries + 3; }
+
 private:
     char m_EventId[32];
     void* m_Buffer;
