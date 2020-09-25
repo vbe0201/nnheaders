@@ -17,6 +17,8 @@ class AsyncContext;
 
 class Uid {
 public:
+    bool IsValid() const { return m_Storage[0] != 0 || m_Storage[1] != 0; }
+
     u64 m_Storage[2];
 };
 
