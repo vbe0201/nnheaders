@@ -30,9 +30,9 @@ public:
     void SetBuffer(void* buffer, size_t size);
     void Clear();
 
-    void Add(const char* key, s64 value);
-    void Add(const char* key, f64 value);
-    void Add(const char* key, const char* value);
+    Result Add(const char* key, s64 value);
+    Result Add(const char* key, f64 value);
+    Result Add(const char* key, const char* value);
 
     Result Save();
     Result Save(const account::Uid& uid);
