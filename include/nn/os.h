@@ -92,7 +92,16 @@ struct MessageQueueType {
     detail::InternalConditionVariable _x40;
 };
 
-struct ConditionVariableType {};
+struct ConditionVariableType {
+    u8 state;
+    u32 _x1;
+    detail::InternalConditionVariable image;
+};
+
+enum class ConditionVariableStatus : u8 {
+    TimeOut = 0,
+    NoTimeOut = 1,
+};
 
 struct SemaphoreType {
     std::aligned_storage_t<0x28, 8> storage;
@@ -164,7 +173,8 @@ void FinalizeConditionVariable(ConditionVariableType*);
 void SignalConditionVariable(ConditionVariableType*);
 void BroadcastConditionVariable(ConditionVariableType*);
 void WaitConditionVariable(ConditionVariableType*);
-u8 TimedWaitConditionVariable(ConditionVariableType*, MutexType*, nn::TimeSpan);
+ConditionVariableStatus TimedWaitConditionVariable(ConditionVariableType*, MutexType*,
+                                                   nn::TimeSpan);
 
 // THREAD
 Result CreateThread(nn::os::ThreadType*, void (*)(void*), void* arg, void* srcStack, u64 stackSize,
