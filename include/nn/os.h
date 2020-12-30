@@ -20,6 +20,11 @@ struct InternalCriticalSection {
 struct InternalConditionVariable {
     u32 Image;
 };
+
+struct InternalCriticalSectionStorage {
+    // nn::util::TypedStorage<nn::os::detail::InternalCriticalSection, 4, 4>
+    InternalCriticalSection storage;
+};
 }  // namespace detail
 
 typedef u64 Tick;
@@ -112,11 +117,17 @@ void FreeMemoryBlock(u64, u64);
 void SetMemoryHeapSize(u64);
 
 // MUTEX
+// https://github.com/misson20000/nn-types/blob/master/nn_os.h
 struct MutexType {
-    u8 curState;            // _0
-    bool isRecursiveMutex;  // _1
-    s32 lockLevel;          // _2
-    u8 _6[0x20 - 0xE];
+  uint8_t _state;
+  bool _isRecursive;
+  s32 _lockLevel;
+  s32 _nestCount;
+  ThreadType* _ownerThread;
+  union {
+    int32_t _mutexImage[1];
+    detail::InternalCriticalSectionStorage _mutex;
+  };
 };
 
 void InitializeMutex(nn::os::MutexType*, bool, s32);
